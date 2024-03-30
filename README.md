@@ -84,13 +84,14 @@ struct Pair {
 * `struct Foo;`
 * `struct Foo(C);` where `C` is children type.
 * `struct Foo { f1: C1, f2: C2, ..., fn: CN }`
-* `enum Foo { ... }`
+* `enum Foo { ... }`:
   * `UnitVariant`
   * `TupleVariant(C1, ..., CN)`
   * `StructVariant{f1: C1, ..., fn: CN}`
 * `Box` of any root type
 
 ### Children type
-* `T`: Any root type.
+* Any root type `T`
 * `(T1, T2, ..., TN)`
 * `Vec<T>`
+* `Option<T>`
