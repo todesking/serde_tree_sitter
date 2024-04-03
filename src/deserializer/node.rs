@@ -32,6 +32,18 @@ impl<'de, N: TsNode<'de>> NodeDeserializer<'de, N> {
             .map_err(DeserializeError::ParseBoolError)
     }
 }
+
+macro_rules! handle_primitive {
+    ($name:ident, $parse:ident, $visit:ident) => {
+        fn $name<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+        where
+            V: serde::de::Visitor<'de>,
+        {
+            visitor.$visit(self.$parse()?)
+        }
+    };
+}
+
 impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> {
     type Error = DeserializeError;
 
@@ -42,82 +54,17 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
         _visitor.visit_seq(crate::access::SeqAccess::new(self.node.named_children()))
     }
 
-    fn deserialize_bool<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_bool(self.parse_bool()?)
-    }
-
-    fn deserialize_i8<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_i8(self.parse_int()?)
-    }
-
-    fn deserialize_i16<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_i16(self.parse_int()?)
-    }
-
-    fn deserialize_i32<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_i32(self.parse_int()?)
-    }
-
-    fn deserialize_i64<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_i64(self.parse_int()?)
-    }
-
-    fn deserialize_u8<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_u8(self.parse_int()?)
-    }
-
-    fn deserialize_u16<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_u16(self.parse_int()?)
-    }
-
-    fn deserialize_u32<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_u32(self.parse_int()?)
-    }
-
-    fn deserialize_u64<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_u64(self.parse_int()?)
-    }
-
-    fn deserialize_f32<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_f32(self.parse_float()?)
-    }
-
-    fn deserialize_f64<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where
-        V: serde::de::Visitor<'de>,
-    {
-        _visitor.visit_f64(self.parse_float()?)
-    }
+    handle_primitive!(deserialize_bool, parse_bool, visit_bool);
+    handle_primitive!(deserialize_u8, parse_int, visit_u8);
+    handle_primitive!(deserialize_u16, parse_int, visit_u16);
+    handle_primitive!(deserialize_u32, parse_int, visit_u32);
+    handle_primitive!(deserialize_u64, parse_int, visit_u64);
+    handle_primitive!(deserialize_i8, parse_int, visit_i8);
+    handle_primitive!(deserialize_i16, parse_int, visit_i16);
+    handle_primitive!(deserialize_i32, parse_int, visit_i32);
+    handle_primitive!(deserialize_i64, parse_int, visit_i64);
+    handle_primitive!(deserialize_f32, parse_float, visit_f32);
+    handle_primitive!(deserialize_f64, parse_float, visit_f64);
 
     fn deserialize_char<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
     where
