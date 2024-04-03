@@ -68,13 +68,13 @@ impl<'de, N: TsNode<'de>> serde::de::Deserializer<'de> for FieldDeserializer<'de
         deserialize_ignored_any,
     );
 
-    fn deserialize_option<V>(mut self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_option<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
         match self.nodes.len() {
-            0 => _visitor.visit_none(),
-            1 => _visitor.visit_some(NodeDeserializer::new(self.nodes.pop().unwrap())),
+            0 => visitor.visit_none(),
+            1 => visitor.visit_some(NodeDeserializer::new(self.nodes.pop().unwrap())),
             n => Err(DeserializeError::field_length(self.field_name, 1, n)),
         }
     }
@@ -82,23 +82,23 @@ impl<'de, N: TsNode<'de>> serde::de::Deserializer<'de> for FieldDeserializer<'de
     fn deserialize_unit_struct<V>(
         self,
         _name: &'static str,
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.delegate(move |de| de.deserialize_unit_struct(_name, _visitor))
+        self.delegate(move |de| de.deserialize_unit_struct(_name, visitor))
     }
 
     fn deserialize_newtype_struct<V>(
         self,
         _name: &'static str,
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.delegate(move |de| de.deserialize_newtype_struct(_name, _visitor))
+        self.delegate(move |de| de.deserialize_newtype_struct(_name, visitor))
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -108,46 +108,46 @@ impl<'de, N: TsNode<'de>> serde::de::Deserializer<'de> for FieldDeserializer<'de
         visitor.visit_seq(crate::access::SeqAccess::new(self.nodes.into_iter()))
     }
 
-    fn deserialize_tuple<V>(self, _len: usize, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.delegate(move |de| de.deserialize_tuple(_len, _visitor))
+        self.delegate(move |de| de.deserialize_tuple(_len, visitor))
     }
 
     fn deserialize_tuple_struct<V>(
         self,
         _name: &'static str,
         _len: usize,
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.delegate(move |de| de.deserialize_tuple_struct(_name, _len, _visitor))
+        self.delegate(move |de| de.deserialize_tuple_struct(_name, _len, visitor))
     }
 
     fn deserialize_struct<V>(
         self,
         _name: &'static str,
         _fields: &'static [&'static str],
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.delegate(|de| de.deserialize_struct(_name, _fields, _visitor))
+        self.delegate(|de| de.deserialize_struct(_name, _fields, visitor))
     }
 
     fn deserialize_enum<V>(
         self,
         _name: &'static str,
         _variants: &'static [&'static str],
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.delegate(move |de| de.deserialize_enum(_name, _variants, _visitor))
+        self.delegate(move |de| de.deserialize_enum(_name, _variants, visitor))
     }
 }
