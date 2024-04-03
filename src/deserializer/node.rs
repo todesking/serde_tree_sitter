@@ -47,11 +47,11 @@ macro_rules! handle_primitive {
 impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> {
     type Error = DeserializeError;
 
-    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        _visitor.visit_seq(crate::access::SeqAccess::new(self.node.named_children()))
+        visitor.visit_seq(crate::access::SeqAccess::new(self.node.named_children()))
     }
 
     handle_primitive!(deserialize_bool, parse_bool, visit_bool);
@@ -75,25 +75,25 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
         ))
     }
 
-    fn deserialize_str<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        _visitor.visit_borrowed_str(self.node.src())
+        visitor.visit_borrowed_str(self.node.src())
     }
 
-    fn deserialize_string<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        _visitor.visit_string(self.node.src().to_owned())
+        visitor.visit_string(self.node.src().to_owned())
     }
 
-    fn deserialize_bytes<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        _visitor.visit_borrowed_bytes(self.node.src().as_bytes())
+        visitor.visit_borrowed_bytes(self.node.src().as_bytes())
     }
 
     fn deserialize_byte_buf<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
@@ -105,14 +105,14 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
         ))
     }
 
-    fn deserialize_option<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
         let mut children = self.node.named_children().collect::<Vec<_>>();
         match children.len() {
-            0 => _visitor.visit_none(),
-            1 => _visitor.visit_some(NodeDeserializer::new(children.pop().unwrap())),
+            0 => visitor.visit_none(),
+            1 => visitor.visit_some(NodeDeserializer::new(children.pop().unwrap())),
             n => Err(DeserializeError::child_count(1, n)),
         }
     }
@@ -199,12 +199,12 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
         self,
         _name: &'static str,
         _fields: &'static [&'static str],
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        _visitor.visit_seq(FieldsAsSeqAccess::new(self.node, _fields))
+        visitor.visit_seq(FieldsAsSeqAccess::new(self.node, _fields))
     }
 
     fn deserialize_enum<V>(
@@ -229,11 +229,11 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
         visitor.visit_borrowed_str(self.node.kind())
     }
 
-    fn deserialize_ignored_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        _visitor.visit_unit()
+        visitor.visit_unit()
     }
 }
 impl<'de, N: TsNode<'de>> NodeDeserializer<'de, N> {
