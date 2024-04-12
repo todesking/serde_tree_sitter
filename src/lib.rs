@@ -5,7 +5,7 @@ mod error;
 pub use deserializer::NodeDeserializer;
 pub use error::DeserializeError;
 
-pub trait TsNode<'de>: Clone
+pub trait TsNode<'de>: Clone + std::fmt::Debug
 where
     Self: Sized,
 {
@@ -21,6 +21,16 @@ where
 struct TsNodeImpl<'a, 'de> {
     node: tree_sitter::Node<'a>,
     src: &'de str,
+}
+
+impl<'a, 'de> std::fmt::Debug for TsNodeImpl<'a, 'de> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TsNodeImpl")
+            .field("kind", &self.kind())
+            .field("named_children_count", &self.named_child_count())
+            .field("children", &self.named_children().collect::<Vec<_>>())
+            .finish_non_exhaustive()
+    }
 }
 
 impl<'a, 'de> TsNode<'de> for TsNodeImpl<'a, 'de> {
@@ -114,6 +124,22 @@ mod test {
             }
         }
     }
+    impl std::fmt::Debug for &DummyNode {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("DummyNode")
+                .field("kind", &self.kind)
+                .field("named_child_count", &self.named_child_count())
+                .field(
+                    "children",
+                    &self
+                        .named_children
+                        .iter()
+                        .map(|(f, n)| (f, n))
+                        .collect::<Vec<_>>(),
+                )
+                .finish_non_exhaustive()
+        }
+    }
     impl<'de> TsNode<'de> for &DummyNode {
         fn named_child(&self, index: usize) -> Option<Self> {
             self.named_children.get(index).map(|x| &x.1)
@@ -184,6 +210,11 @@ mod test {
             assert_eq!(deserialize::<$t>(&make_node!($($node)+)).unwrap(), $expected);
         };
     }
+    macro_rules! assert_err {
+        ($t:ty, ($($node:tt)+), $expected:expr) => {
+            assert_eq!(deserialize::<$t>(&make_node!($($node)+)).unwrap_err(), $expected);
+        };
+    }
 
     #[test]
     fn test_unit_ok() {
@@ -198,78 +229,367 @@ mod test {
             }
         };
     }
+    macro_rules! define_test_simple {
+        ($name:ident, $t:ty, $repr:literal, $expected:expr, $err:ident) => {
+            #[test]
+            fn $name() {
+                assert_ok!($t, (root $repr), $expected as $t);
+                assert_err!(
+                    $t,
+                    (root "invalid_value"),
+                    DeserializeError::$err("invalid_value".parse::<$t>().unwrap_err())
+                );
+            }
+        };
+    }
+    macro_rules! define_test_int {
+        ($name:ident, $t:ty, $repr:literal, $expected:expr) => {
+            define_test_simple!($name, $t, $repr, $expected, ParseIntError);
+        };
+    }
+    macro_rules! define_test_float {
+        ($name:ident, $t:ty, $repr:literal, $expected:expr) => {
+            define_test_simple!($name, $t, $repr, $expected, ParseFloatError);
+        };
+    }
 
-    define_test_simple_ok!(test_i8_ok, i8, "123", 123);
-    define_test_simple_ok!(test_i16_ok, i16, "123", 123);
-    define_test_simple_ok!(test_i32_ok, i32, "123", 123);
-    define_test_simple_ok!(test_i64_ok, i64, "123", 123);
-    define_test_simple_ok!(test_u8_ok, u8, "123", 123);
-    define_test_simple_ok!(test_u16_ok, u16, "123", 123);
-    define_test_simple_ok!(test_u32_ok, u32, "123", 123);
-    define_test_simple_ok!(test_u64_ok, u64, "123", 123);
-    define_test_simple_ok!(test_f32_ok, f32, "1234.5", 1234.5);
-    define_test_simple_ok!(test_f64_ok, f64, "1234.5", 1234.5);
-    define_test_simple_ok!(test_bool_ok, bool, "true", true);
+    define_test_int!(test_i8_ok, i8, "123", 123);
+    define_test_int!(test_i16_ok, i16, "123", 123);
+    define_test_int!(test_i32_ok, i32, "123", 123);
+    define_test_int!(test_i64_ok, i64, "123", 123);
+    define_test_int!(test_u8_ok, u8, "123", 123);
+    define_test_int!(test_u16_ok, u16, "123", 123);
+    define_test_int!(test_u32_ok, u32, "123", 123);
+    define_test_int!(test_u64_ok, u64, "123", 123);
+    define_test_float!(test_f32_ok, f32, "1234.5", 1234.5);
+    define_test_float!(test_f64_ok, f64, "1234.5", 1234.5);
+    define_test_simple!(test_bool_ok, bool, "true", true, ParseBoolError);
 
     define_test_simple_ok!(test_string_ok, String, "abc", "abc".to_owned());
     define_test_simple_ok!(test_str_ok, &str, "abc", "abc");
 
     #[test]
-    fn unit() {
-        assert_eq!(deserialize::<()>(&make_node!(root)).unwrap(), ());
-    }
-
-    #[test]
-    fn unit_struct() {
+    fn test_unit_struct() {
         #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
         #[serde(rename = "root")]
         struct Root;
 
-        assert_eq!(deserialize::<Root>(&make_node!(root)).unwrap(), Root);
-        assert_eq!(
-            deserialize::<Root>(&make_node!(expr)).unwrap_err(),
+        assert_ok!(Root, (root), Root);
+        assert_err!(
+            Root,
+            (not_root),
             DeserializeError::NodeType {
                 expected: "root".into(),
-                actual: "expr".into()
+                actual: "not_root".into()
             }
         );
     }
 
     #[test]
-    fn tuple_struct() {
+    fn test_0_tuple_struct() {
         #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
         #[serde(rename = "root")]
         struct Root();
 
-        assert_eq!(
-            deserialize::<Root>(&make_node!(root)).unwrap_err(),
-            DeserializeError::TupleStructNotSupported,
-        )
+        assert_ok!(Root, (root), Root());
+
+        assert_err!(
+            Root,
+            (not_root),
+            DeserializeError::NodeType {
+                expected: "root".into(),
+                actual: "not_root".into()
+            }
+        );
+
+        assert_err!(
+            Root,
+            (root(child)),
+            DeserializeError::ChildCount {
+                expected: 0,
+                actual: 1
+            }
+        );
     }
 
     #[test]
-    fn tuple() {
+    fn test_n_tuple_struct() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root(u32, u32);
+
+        assert_ok!(
+            Root,
+            (root (child "123") (child "456")),
+            Root(123, 456)
+        );
+        assert_err!(
+            Root,
+            (root (child "123")),
+            DeserializeError::child_count(2, 1)
+        );
+        assert_err!(
+            Root,
+            (root (child "123") (child "456") (child "789")),
+            DeserializeError::child_count(2, 3)
+        );
+    }
+
+    #[test]
+    fn test_newtype_struct_not_supported_type() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root(Child);
+
         #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
         #[serde(rename = "child")]
         struct Child;
 
-        assert_eq!(
-            deserialize::<(Child,)>(&make_node!(root(child))).unwrap(),
-            (Child,)
+        assert_err!(
+            Root,
+            (root "xxx" (child "123")),
+            DeserializeError::DataTypeNotSupported(
+                "Method deserialize_unit_struct is not supported for newtype_struct member type"
+                .to_string()
+            )
         );
-        assert_eq!(
-            deserialize::<(Child,)>(&make_node!(root)).unwrap_err(),
-            DeserializeError::ChildCount {
-                expected: 1,
-                actual: 0
-            }
+    }
+
+    #[test]
+    fn test_newtype_struct_vec() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root(Vec<u32>);
+
+        assert_ok!(
+            Root,
+            (root "xxx"),
+            Root(vec![])
         );
-        assert_eq!(
-            deserialize::<(Child,)>(&make_node!(root(child)(child))).unwrap_err(),
-            DeserializeError::ChildCount {
-                expected: 1,
-                actual: 2
-            }
+        assert_ok!(
+            Root,
+            (root "xxx" (child "123") (c "456")),
+            Root(vec![123, 456])
+        );
+        assert_err!(
+            Root,
+            (not_root "xxx"),
+            DeserializeError::node_type("root", "not_root")
+        );
+    }
+
+    #[test]
+    fn test_newtype_struct_option() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root(Option<u32>);
+
+        assert_ok!(
+            Root,
+            (root "xxx"),
+            Root(None)
+        );
+        assert_ok!(
+            Root,
+            (root "xxx" (child "123")),
+            Root(Some(123))
+        );
+        assert_err!(
+            Root,
+            (not_root "xxx"),
+            DeserializeError::node_type("root", "not_root")
+        );
+        assert_err!(
+            Root,
+            (root "xxx" (child "123") (child "456")),
+            DeserializeError::child_count(1, 2)
+        );
+    }
+
+    #[test]
+    fn test_newtype_struct_tuple() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root((u32, u32));
+
+        assert_ok!(
+            Root,
+            (root (child "123") (child "456")),
+            Root((123, 456))
+        );
+        assert_err!(
+            Root,
+            (root (child "123")),
+            DeserializeError::child_count(2, 1)
+        );
+        assert_err!(
+            Root,
+            (root (child "123") (child "456") (child "789")),
+            DeserializeError::child_count(2, 3)
+        );
+    }
+
+    #[test]
+    fn test_newtype_struct_string() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root(String);
+
+        assert_ok!(
+            Root,
+            (root "abc"),
+            Root("abc".into())
+        );
+        assert_ok!(
+            Root,
+            (root "abc" (child "xxx")),
+            Root("abc".into())
+        );
+    }
+
+    #[test]
+    fn test_struct() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root {
+            a: u64,
+            b: String,
+        }
+
+        assert_ok!(
+            Root,
+            (root a: (child "123") b: (child "abc")),
+            Root { a: 123, b: "abc".into()}
+        );
+        assert_err!(
+            Root,
+            (not_root a: (child "123") b: (child "abc")),
+            DeserializeError::node_type("root", "not_root")
+        );
+        assert_err!(
+            Root,
+            (root b: (child "abc")),
+            DeserializeError::field_length("a", 1, 0)
+        );
+        assert_err!(
+            Root,
+            (root a: (child "xxx") b: (child "abc")),
+            DeserializeError::ParseIntError("xxx".parse::<u64>().unwrap_err())
+        );
+        assert_err!(
+            Root,
+            (root a: (child "123") a: (child "456") b: (child "abc")),
+            DeserializeError::field_length("a", 1, 2)
+        );
+    }
+
+    #[test]
+    fn test_struct_tuple() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root {
+            a: (u32, u32),
+        }
+
+        assert_ok!(
+            Root,
+            (root
+                a: (child "123")
+                (child "999")
+                a: (child "456")),
+            Root { a: (123, 456) }
+        );
+        assert_err!(
+            Root,
+            (root
+                a: (child "123")
+                (child "999")),
+            DeserializeError::field_length("a", 2, 1)
+        );
+    }
+
+    #[test]
+    fn test_struct_vec() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root {
+            a: Vec<u32>,
+        }
+
+        assert_ok!(
+            Root,
+            (root "999"),
+            Root { a: vec![]}
+        );
+        assert_ok!(
+            Root,
+            (root "999"
+                a: (child "123")),
+            Root { a: vec![123]}
+        );
+    }
+
+    #[test]
+    fn test_struct_option() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root {
+            a: Option<u32>,
+        }
+
+        assert_ok!(
+            Root,
+            (root "123"),
+            Root { a: None }
+        );
+        assert_ok!(
+            Root,
+            (root "123" a: (child "456")),
+            Root { a: Some(456) }
+        );
+        assert_err!(
+            Root,
+            (root "123" a: (child "456") a: (child "789")),
+            DeserializeError::field_length("a", 1, 2)
+        );
+    }
+
+    #[test]
+    fn test_tuple() {
+        // arity = 1
+        assert_ok!(
+            (i32,),
+            (root (child "123")),
+            (123,)
+        );
+        assert_err!((i32,), (root), DeserializeError::child_count(1, 0));
+        assert_err!(
+            (i32,),
+            (root (child "123") (child "456")),
+            DeserializeError::child_count(1, 2)
+        );
+        assert_err!(
+            (i32,),
+            (root (child "xxx")),
+            DeserializeError::ParseIntError("xxx".parse::<i32>().unwrap_err())
+        );
+
+        // arity = 2
+        assert_ok!(
+            (i32, u8),
+            (root (child "123") (child "99")),
+            (123, 99)
+        );
+        assert_err!((i32, u8), (root), DeserializeError::child_count(2, 0));
+        assert_err!(
+            (i32, u8),
+            (root (child "1") (child "2") (child "3")),
+            DeserializeError::child_count(2, 3)
+        );
+        assert_err!(
+            (i32, u8),
+            (root (child "123") (child "yyy")),
+            DeserializeError::ParseIntError("yyy".parse::<u8>().unwrap_err())
         );
     }
 
@@ -290,33 +610,6 @@ mod test {
         assert_eq!(
             deserialize::<Vec<Child>>(&make_node!(root(child)(child))).unwrap(),
             vec![Child, Child]
-        );
-    }
-
-    #[test]
-    fn newtype_struct_tuple() {
-        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
-        #[serde(rename = "root")]
-        struct Root((Child, Child));
-
-        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
-        #[serde(rename = "child")]
-        struct Child;
-
-        assert_eq!(
-            deserialize::<Root>(&make_node!(root(child)(child))).unwrap(),
-            Root((Child, Child))
-        );
-        assert_eq!(
-            deserialize::<Root>(&make_node!(foo(child)(child))).unwrap_err(),
-            DeserializeError::node_type("root", "foo")
-        );
-        assert_eq!(
-            deserialize::<Root>(&make_node!(root(child))).unwrap_err(),
-            DeserializeError::ChildCount {
-                expected: 2,
-                actual: 1
-            }
         );
     }
 
@@ -386,7 +679,7 @@ mod test {
     }
 
     #[test]
-    fn r#enum() {
+    fn test_enum() {
         #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
         #[serde(rename_all = "snake_case")]
         enum Value {
@@ -499,34 +792,7 @@ mod test {
     }
 
     #[test]
-    fn r#struct() {
-        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
-        struct Foo {
-            a: u64,
-            b: Option<String>,
-            c: Vec<bool>,
-            d: String,
-        }
-        assert_eq!(
-            deserialize::<Foo>(&make_node!(foo
-                 a: (int "123")
-                 b: (str "foo")
-                 c: (bool "true")
-                 c: (bool "false")
-                 d: (str "bar")
-            ))
-            .unwrap(),
-            Foo {
-                a: 123,
-                b: Some("foo".into()),
-                c: vec![true, false],
-                d: "bar".into(),
-            }
-        );
-    }
-
-    #[test]
-    fn json() {
+    fn test_json() {
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(tree_sitter_json::language()).unwrap();
 
@@ -541,16 +807,24 @@ mod test {
             Object(Vec<Pair>),
             Number(String),
             Array(Vec<Value>),
-            String(StringContainer),
+            String(Option<StringContent>),
             Null,
         }
 
         #[derive(Debug, PartialEq, Eq, serde::Deserialize)]
-        #[serde(rename_all = "snake_case")]
+        #[serde(rename = "pair", rename_all = "snake_case")]
         struct Pair {
             key: StringContainer,
             value: Box<Value>,
         }
+
+        #[derive(Debug, PartialEq, Eq, serde::Deserialize)]
+        #[serde(rename = "string")]
+        struct StringContainer(Option<StringContent>);
+
+        #[derive(Debug, PartialEq, Eq, serde::Deserialize)]
+        #[serde(rename = "string_content")]
+        struct StringContent(String);
 
         let src = r#"
         {
@@ -561,19 +835,8 @@ mod test {
         {}
         "#;
 
-        #[derive(Debug, PartialEq, Eq, serde::Deserialize)]
-        #[serde(rename = "string")]
-        struct StringContainer(Option<StringContent>);
-
-        #[derive(Debug, PartialEq, Eq, serde::Deserialize)]
-        #[serde(rename = "string_content")]
-        struct StringContent(String);
-
         let tree = parser.parse(src, None).unwrap();
-        show_node(&TsNodeImpl {
-            node: tree.root_node(),
-            src,
-        });
+        // show_node(&TsNodeImpl { node: tree.root_node(), src, });
         let ast: Document = from_tree(&tree, src).unwrap();
 
         assert_eq!(
@@ -593,7 +856,7 @@ mod test {
                         value: Box::new(Value::Array(vec![
                             Value::Null,
                             Value::Number("0".into()),
-                            Value::String(StringContainer(None)),
+                            Value::String(None),
                         ]))
                     }
                 ]),

@@ -56,7 +56,6 @@ impl<'de, N: TsNode<'de>> serde::de::EnumAccess<'de> for EnumAccess<'de, N> {
     {
         let value = seed.deserialize(NodeDeserializer::new(self.node.clone()))?;
         let variant_access = VariantAccess::new(self.node);
-        println!("EnumAccess::variant_seed()");
         Ok((value, variant_access))
     }
 }
@@ -84,7 +83,9 @@ impl<'de, N: TsNode<'de>> serde::de::VariantAccess<'de> for VariantAccess<'de, N
     where
         T: serde::de::DeserializeSeed<'de>,
     {
-        _seed.deserialize(crate::NodeDeserializer::new(self.node))
+        _seed.deserialize(crate::deserializer::NewtypeStructDeserializer::new(
+            self.node,
+        ))
     }
 
     fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value, Self::Error>

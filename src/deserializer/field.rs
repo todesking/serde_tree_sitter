@@ -108,46 +108,53 @@ impl<'de, N: TsNode<'de>> serde::de::Deserializer<'de> for FieldDeserializer<'de
         visitor.visit_seq(crate::access::SeqAccess::new(self.nodes.into_iter()))
     }
 
-    fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.delegate(move |de| de.deserialize_tuple(_len, visitor))
+        if self.nodes.len() != len {
+            return Err(DeserializeError::field_length(
+                self.field_name,
+                len,
+                self.nodes.len(),
+            ));
+        }
+        visitor.visit_seq(crate::access::SeqAccess::new(self.nodes.into_iter()))
     }
 
     fn deserialize_tuple_struct<V>(
         self,
-        _name: &'static str,
-        _len: usize,
+        name: &'static str,
+        len: usize,
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.delegate(move |de| de.deserialize_tuple_struct(_name, _len, visitor))
+        self.delegate(move |de| de.deserialize_tuple_struct(name, len, visitor))
     }
 
     fn deserialize_struct<V>(
         self,
-        _name: &'static str,
-        _fields: &'static [&'static str],
+        name: &'static str,
+        fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.delegate(|de| de.deserialize_struct(_name, _fields, visitor))
+        self.delegate(|de| de.deserialize_struct(name, fields, visitor))
     }
 
     fn deserialize_enum<V>(
         self,
-        _name: &'static str,
-        _variants: &'static [&'static str],
+        name: &'static str,
+        variants: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.delegate(move |de| de.deserialize_enum(_name, _variants, visitor))
+        self.delegate(move |de| de.deserialize_enum(name, variants, visitor))
     }
 }

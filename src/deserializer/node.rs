@@ -1,6 +1,5 @@
-use std::marker::PhantomData;
-
 use crate::{access::FieldsAsSeqAccess, DeserializeError, TsNode};
+use std::marker::PhantomData;
 
 pub struct NodeDeserializer<'de, N: TsNode<'de>> {
     node: N,
@@ -30,6 +29,11 @@ impl<'de, N: TsNode<'de>> NodeDeserializer<'de, N> {
             .src()
             .parse::<T>()
             .map_err(DeserializeError::ParseBoolError)
+    }
+    fn into_newtype_struct_deserializer(
+        self,
+    ) -> crate::deserializer::NewtypeStructDeserializer<'de, N> {
+        super::NewtypeStructDeserializer::new(self.node)
     }
 }
 
@@ -149,14 +153,13 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
         if name != self.node.kind() {
             return Err(DeserializeError::node_type(name, self.node.kind()));
         }
-        visitor.visit_newtype_struct(self)
+        visitor.visit_newtype_struct(self.into_newtype_struct_deserializer())
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.debug_print("deserialize_seq()");
         let seq_access = crate::access::SeqAccess::new(self.node.named_children());
         visitor.visit_seq(seq_access)
     }
@@ -176,14 +179,17 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
 
     fn deserialize_tuple_struct<V>(
         self,
-        _name: &'static str,
-        _len: usize,
-        _visitor: V,
+        name: &'static str,
+        len: usize,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        Err(DeserializeError::TupleStructNotSupported)
+        if name != self.node.kind() {
+            return Err(DeserializeError::node_type(name, self.node.kind()));
+        }
+        self.deserialize_tuple(len, visitor)
     }
 
     fn deserialize_map<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
@@ -197,26 +203,28 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
 
     fn deserialize_struct<V>(
         self,
-        _name: &'static str,
-        _fields: &'static [&'static str],
+        name: &'static str,
+        fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        visitor.visit_seq(FieldsAsSeqAccess::new(self.node, _fields))
+        if name != self.node.kind() {
+            return Err(DeserializeError::node_type(name, self.node.kind()));
+        }
+        visitor.visit_seq(FieldsAsSeqAccess::new(self.node, fields))
     }
 
     fn deserialize_enum<V>(
         self,
-        name: &'static str,
-        variants: &'static [&'static str],
+        _name: &'static str,
+        _variants: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.debug_print(&format!("deserialize_enum({name}, {variants:?})"));
         let enum_access = crate::access::EnumAccess::new(self.node);
         visitor.visit_enum(enum_access)
     }
@@ -225,7 +233,6 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
     where
         V: serde::de::Visitor<'de>,
     {
-        self.debug_print("deserialize_identifier()");
         visitor.visit_borrowed_str(self.node.kind())
     }
 
@@ -238,24 +245,9 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
 }
 impl<'de, N: TsNode<'de>> NodeDeserializer<'de, N> {
     pub fn new(node: N) -> NodeDeserializer<'de, N> {
-        let d = NodeDeserializer {
+        NodeDeserializer {
             node,
             _p: PhantomData,
-        };
-        d.debug_print("new()");
-        d
-    }
-    fn debug_print(&self, msg: &str) {
-        println!(
-            "{} - node(kind={}) src={}",
-            msg,
-            self.node.kind(),
-            self.node
-                .src()
-                .chars()
-                .filter(|x| *x != '\n')
-                .take(10)
-                .collect::<String>()
-        );
+        }
     }
 }
