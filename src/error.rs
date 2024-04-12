@@ -3,7 +3,7 @@ use std::fmt::Display;
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum DeserializeError {
     #[error("Child count not match: expected={expected}, actual={actual}")]
-    ChildCount { expected: usize, actual: usize },
+    ChildLength { expected: usize, actual: usize },
     #[error("Node count not match(field = {field_name}): expected={expected}, actual={actual}")]
     FieldLength {
         field_name: &'static str,
@@ -12,8 +12,6 @@ pub enum DeserializeError {
     },
     #[error("Node type not match: expected={expected}, actual={actual}")]
     NodeType { expected: String, actual: String },
-    #[error("Tuple struct is not supported. Use tuple with newtype struct(eg. `struct NewtypeStruct((A, B, C))`)")]
-    TupleStructNotSupported,
     #[error("{0}")]
     DataTypeNotSupported(String),
     #[error(transparent)]
@@ -36,8 +34,8 @@ impl DeserializeError {
             actual: actual.into(),
         }
     }
-    pub fn child_count(expected: usize, actual: usize) -> Self {
-        DeserializeError::ChildCount { expected, actual }
+    pub fn child_length(expected: usize, actual: usize) -> Self {
+        DeserializeError::ChildLength { expected, actual }
     }
     pub fn field_length(field_name: &'static str, expected: usize, actual: usize) -> Self {
         DeserializeError::FieldLength {

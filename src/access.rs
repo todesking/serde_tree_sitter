@@ -79,40 +79,40 @@ impl<'de, N: TsNode<'de>> serde::de::VariantAccess<'de> for VariantAccess<'de, N
         Ok(())
     }
 
-    fn newtype_variant_seed<T>(self, _seed: T) -> Result<T::Value, Self::Error>
+    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value, Self::Error>
     where
         T: serde::de::DeserializeSeed<'de>,
     {
-        _seed.deserialize(crate::deserializer::NewtypeStructDeserializer::new(
+        seed.deserialize(crate::deserializer::NewtypeStructDeserializer::new(
             self.node,
         ))
     }
 
-    fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value, Self::Error>
+    fn tuple_variant<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        if self.node.named_child_count() != _len {
-            return Err(DeserializeError::ChildCount {
-                expected: _len,
-                actual: self.node.named_child_count(),
-            });
+        if self.node.named_child_count() != len {
+            return Err(DeserializeError::child_length(
+                len,
+                self.node.named_child_count(),
+            ));
         }
         let seq = SeqAccess::new(self.node.named_children());
-        _visitor.visit_seq(seq)
+        visitor.visit_seq(seq)
     }
 
     fn struct_variant<V>(
         self,
-        _fields: &'static [&'static str],
-        _visitor: V,
+        fields: &'static [&'static str],
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        _visitor.visit_seq(FieldsAsSeqAccess {
+        visitor.visit_seq(FieldsAsSeqAccess {
             node: self.node,
-            fields: _fields,
+            fields,
             index: 0,
             _p: PhantomData,
         })

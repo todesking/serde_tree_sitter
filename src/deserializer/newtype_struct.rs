@@ -21,7 +21,7 @@ impl<'de, N: TsNode<'de>> NewtypeStructDeserializer<'de, N> {
     ) -> Result<NodeDeserializer<'de, N>, DeserializeError> {
         let mut children = self.node.named_children();
         if children.len() != 1 {
-            return Err(DeserializeError::child_count(1, children.len()));
+            return Err(DeserializeError::child_length(1, children.len()));
         }
         Ok(NodeDeserializer::new(children.next().unwrap()))
     }
@@ -129,7 +129,7 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NewtypeStructDeserializer
     {
         let children = self.node.named_children();
         if len != children.len() {
-            return Err(DeserializeError::child_count(len, children.len()));
+            return Err(DeserializeError::child_length(len, children.len()));
         }
         visitor.visit_seq(crate::access::SeqAccess::new(children))
     }

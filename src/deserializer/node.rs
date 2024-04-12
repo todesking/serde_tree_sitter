@@ -117,7 +117,7 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
         match children.len() {
             0 => visitor.visit_none(),
             1 => visitor.visit_some(NodeDeserializer::new(children.pop().unwrap())),
-            n => Err(DeserializeError::child_count(1, n)),
+            n => Err(DeserializeError::child_length(1, n)),
         }
     }
 
@@ -169,10 +169,10 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
         V: serde::de::Visitor<'de>,
     {
         if len != self.node.named_child_count() {
-            return Err(DeserializeError::ChildCount {
-                expected: len,
-                actual: self.node.named_child_count(),
-            });
+            return Err(DeserializeError::child_length(
+                len,
+                self.node.named_child_count(),
+            ));
         }
         self.deserialize_seq(visitor)
     }

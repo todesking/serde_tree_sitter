@@ -1,5 +1,8 @@
 # Serde deserializer for Tree-sitter
 
+Deserializer for `tree_sitter::Node`.
+You can map tree-sitter's parse result to Rust struct/enum with `#[derive(serde::Deserialize)]`.
+
 ## Example
 
 ### Map node to enum

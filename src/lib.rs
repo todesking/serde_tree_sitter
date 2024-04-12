@@ -223,14 +223,7 @@ mod test {
             }
         );
 
-        assert_err!(
-            Root,
-            (root(child)),
-            DeserializeError::ChildCount {
-                expected: 0,
-                actual: 1
-            }
-        );
+        assert_err!(Root, (root(child)), DeserializeError::child_length(0, 1));
     }
 
     #[test]
@@ -247,12 +240,12 @@ mod test {
         assert_err!(
             Root,
             (root (child "123")),
-            DeserializeError::child_count(2, 1)
+            DeserializeError::child_length(2, 1)
         );
         assert_err!(
             Root,
             (root (child "123") (child "456") (child "789")),
-            DeserializeError::child_count(2, 3)
+            DeserializeError::child_length(2, 3)
         );
     }
 
@@ -323,7 +316,7 @@ mod test {
         assert_err!(
             Root,
             (root "xxx" (child "123") (child "456")),
-            DeserializeError::child_count(1, 2)
+            DeserializeError::child_length(1, 2)
         );
     }
 
@@ -341,12 +334,12 @@ mod test {
         assert_err!(
             Root,
             (root (child "123")),
-            DeserializeError::child_count(2, 1)
+            DeserializeError::child_length(2, 1)
         );
         assert_err!(
             Root,
             (root (child "123") (child "456") (child "789")),
-            DeserializeError::child_count(2, 3)
+            DeserializeError::child_length(2, 3)
         );
     }
 
@@ -483,11 +476,11 @@ mod test {
             (root (child "123")),
             (123,)
         );
-        assert_err!((i32,), (root), DeserializeError::child_count(1, 0));
+        assert_err!((i32,), (root), DeserializeError::child_length(1, 0));
         assert_err!(
             (i32,),
             (root (child "123") (child "456")),
-            DeserializeError::child_count(1, 2)
+            DeserializeError::child_length(1, 2)
         );
         assert_err!(
             (i32,),
@@ -501,11 +494,11 @@ mod test {
             (root (child "123") (child "99")),
             (123, 99)
         );
-        assert_err!((i32, u8), (root), DeserializeError::child_count(2, 0));
+        assert_err!((i32, u8), (root), DeserializeError::child_length(2, 0));
         assert_err!(
             (i32, u8),
             (root (child "1") (child "2") (child "3")),
-            DeserializeError::child_count(2, 3)
+            DeserializeError::child_length(2, 3)
         );
         assert_err!(
             (i32, u8),
@@ -641,7 +634,7 @@ mod test {
         // tuple(error: child count)
         assert_eq!(
             deserialize::<Value>(&make_node!(tuple "999" (c1 "foo"))).unwrap_err(),
-            DeserializeError::child_count(2, 1),
+            DeserializeError::child_length(2, 1),
         );
 
         // tuple(error: type error)
