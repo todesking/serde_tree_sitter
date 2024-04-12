@@ -2,6 +2,11 @@
 name = "serde_tree_sitter"
 version = "0.1.0"
 edition = "2021"
+license-file="LICENSE"
+description="Serde Deserializer for tree-sitter"
+repository="https://github.com/todesking/serde_tree_sitter"
+documentation="https://docs.rs/serde_tree_sitter"
+readme="README.md"
 
 [lib]
 
