@@ -179,6 +179,41 @@ mod test {
         };
     }
 
+    macro_rules! assert_ok {
+        ($t:ty, ($($node:tt)+), $expected:expr) => {
+            assert_eq!(deserialize::<$t>(&make_node!($($node)+)).unwrap(), $expected);
+        };
+    }
+
+    #[test]
+    fn test_unit_ok() {
+        assert_ok!((), (root), ());
+    }
+
+    macro_rules! define_test_simple_ok {
+        ($name:ident, $t:ty, $repr:literal, $expected:expr) => {
+            #[test]
+            fn $name() {
+                assert_ok!($t, (root $repr), $expected as $t);
+            }
+        };
+    }
+
+    define_test_simple_ok!(test_i8_ok, i8, "123", 123);
+    define_test_simple_ok!(test_i16_ok, i16, "123", 123);
+    define_test_simple_ok!(test_i32_ok, i32, "123", 123);
+    define_test_simple_ok!(test_i64_ok, i64, "123", 123);
+    define_test_simple_ok!(test_u8_ok, u8, "123", 123);
+    define_test_simple_ok!(test_u16_ok, u16, "123", 123);
+    define_test_simple_ok!(test_u32_ok, u32, "123", 123);
+    define_test_simple_ok!(test_u64_ok, u64, "123", 123);
+    define_test_simple_ok!(test_f32_ok, f32, "1234.5", 1234.5);
+    define_test_simple_ok!(test_f64_ok, f64, "1234.5", 1234.5);
+    define_test_simple_ok!(test_bool_ok, bool, "true", true);
+
+    define_test_simple_ok!(test_string_ok, String, "abc", "abc".to_owned());
+    define_test_simple_ok!(test_str_ok, &str, "abc", "abc");
+
     #[test]
     fn unit() {
         assert_eq!(deserialize::<()>(&make_node!(root)).unwrap(), ());
