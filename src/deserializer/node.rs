@@ -32,8 +32,9 @@ impl<'de, N: TsNode<'de>> NodeDeserializer<'de, N> {
     }
     fn into_newtype_struct_deserializer(
         self,
+        name: &'static str,
     ) -> crate::deserializer::NewtypeStructDeserializer<'de, N> {
-        super::NewtypeStructDeserializer::new(self.node)
+        super::NewtypeStructDeserializer::new(name, self.node)
     }
 }
 
@@ -153,7 +154,7 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
         if name != self.node.kind() {
             return Err(DeserializeError::node_type(name, self.node.kind()));
         }
-        visitor.visit_newtype_struct(self.into_newtype_struct_deserializer())
+        visitor.visit_newtype_struct(self.into_newtype_struct_deserializer(name))
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -218,14 +219,14 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NodeDeserializer<'de, N> 
 
     fn deserialize_enum<V>(
         self,
-        _name: &'static str,
+        name: &'static str,
         _variants: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        let enum_access = crate::access::EnumAccess::new(self.node);
+        let enum_access = crate::access::EnumAccess::new(self.node, name);
         visitor.visit_enum(enum_access)
     }
 

@@ -327,7 +327,7 @@ mod test {
             Root,
             (root "xxx" (child "123")),
             DeserializeError::DataTypeNotSupported(
-                "Method deserialize_unit_struct is not supported for newtype_struct member type"
+                "Method deserialize_unit_struct is not supported for newtype_struct(root) member type"
                 .to_string()
             )
         );

@@ -35,12 +35,14 @@ impl<'de, N: TsNode<'de>, I: Iterator<Item = N>> SeqAccess<'de, N, I> {
 
 pub struct EnumAccess<'de, N: TsNode<'de>> {
     node: N,
+    name: &'static str,
     _p: PhantomData<&'de N>,
 }
 impl<'de, N: TsNode<'de>> EnumAccess<'de, N> {
-    pub fn new(node: N) -> EnumAccess<'de, N> {
+    pub fn new(node: N, name: &'static str) -> EnumAccess<'de, N> {
         EnumAccess {
             node,
+            name,
             _p: PhantomData,
         }
     }
@@ -55,19 +57,21 @@ impl<'de, N: TsNode<'de>> serde::de::EnumAccess<'de> for EnumAccess<'de, N> {
         V: serde::de::DeserializeSeed<'de>,
     {
         let value = seed.deserialize(NodeDeserializer::new(self.node.clone()))?;
-        let variant_access = VariantAccess::new(self.node);
+        let variant_access = VariantAccess::new(self.node, self.name);
         Ok((value, variant_access))
     }
 }
 
 pub struct VariantAccess<'de, N: TsNode<'de>> {
     node: N,
+    name: &'static str,
     _p: PhantomData<&'de N>,
 }
 impl<'de, N: TsNode<'de>> VariantAccess<'de, N> {
-    pub fn new(node: N) -> VariantAccess<'de, N> {
+    pub fn new(node: N, name: &'static str) -> VariantAccess<'de, N> {
         VariantAccess {
             node,
+            name,
             _p: PhantomData,
         }
     }
@@ -84,7 +88,7 @@ impl<'de, N: TsNode<'de>> serde::de::VariantAccess<'de> for VariantAccess<'de, N
         T: serde::de::DeserializeSeed<'de>,
     {
         seed.deserialize(crate::deserializer::NewtypeStructDeserializer::new(
-            self.node,
+            self.name, self.node,
         ))
     }
 

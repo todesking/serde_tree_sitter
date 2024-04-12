@@ -6,13 +6,15 @@ use crate::{access::SeqAccess, DeserializeError};
 
 pub struct NewtypeStructDeserializer<'de, N: TsNode<'de>> {
     node: N,
+    name: &'static str,
     _p: PhantomData<&'de N>,
 }
 
 impl<'de, N: TsNode<'de>> NewtypeStructDeserializer<'de, N> {
-    pub fn new(node: N) -> Self {
+    pub fn new(name: &'static str, node: N) -> Self {
         Self {
             node,
+            name,
             _p: PhantomData,
         }
     }
@@ -27,8 +29,8 @@ impl<'de, N: TsNode<'de>> NewtypeStructDeserializer<'de, N> {
     }
     fn err_not_supported<T>(&self, name: &str) -> Result<T, DeserializeError> {
         Err(DeserializeError::DataTypeNotSupported(format!(
-            "Method {} is not supported for newtype_struct member type",
-            name
+            "Method {} is not supported for newtype_struct({}) member type",
+            name, self.name,
         )))
     }
 }
@@ -107,13 +109,13 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NewtypeStructDeserializer
 
     fn deserialize_newtype_struct<V>(
         self,
-        _name: &'static str,
+        name: &'static str,
         _visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.err_not_supported("deserialize_newtype_struct")
+        self.err_not_supported(&format!("deserialize_newtype_struct(name={name})"))
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
