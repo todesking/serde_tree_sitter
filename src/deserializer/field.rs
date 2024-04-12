@@ -1,6 +1,8 @@
 use std::marker::PhantomData;
 
-use crate::{DeserializeError, NodeDeserializer, TsNode};
+use crate::deserializer::NodeDeserializer;
+use crate::tsnode::TsNode;
+use crate::DeserializeError;
 
 pub struct FieldDeserializer<'de, N: TsNode<'de>> {
     field_name: &'static str,

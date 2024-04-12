@@ -1,4 +1,4 @@
-use crate::{access::FieldsAsSeqAccess, DeserializeError, TsNode};
+use crate::{access::FieldsAsSeqAccess, tsnode::TsNode, DeserializeError};
 use std::marker::PhantomData;
 
 pub struct NodeDeserializer<'de, N: TsNode<'de>> {

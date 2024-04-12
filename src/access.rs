@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::{DeserializeError, NodeDeserializer, TsNode};
+use crate::{deserializer::NodeDeserializer, tsnode::TsNode, DeserializeError};
 
 pub struct SeqAccess<'de, N: TsNode<'de>, I: Iterator<Item = N>> {
     nodes: I,

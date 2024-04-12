@@ -1,6 +1,8 @@
 use std::marker::PhantomData;
 
-use crate::{access::SeqAccess, DeserializeError, NodeDeserializer, TsNode};
+use crate::deserializer::NodeDeserializer;
+use crate::tsnode::TsNode;
+use crate::{access::SeqAccess, DeserializeError};
 
 pub struct NewtypeStructDeserializer<'de, N: TsNode<'de>> {
     node: N,
