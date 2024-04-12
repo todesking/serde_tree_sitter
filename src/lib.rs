@@ -1,3 +1,46 @@
+//! Serde Deserializer for tree-sitter.
+//!
+//! Use [`from_tree`] or [`from_node`] function to map tree-sitter's parse result to any type you
+//! want.
+//!
+//! # Mapping rules
+//!
+//! ## Root types(`R`)
+//!
+//! * Atom types
+//! * Tuple
+//! * `Vec<R>`
+//! * Unit struct(`struct Foo;`)
+//! * Newtype struct(`struct Foo(N)`)
+//! * Tuple struct(`struct Foo(T1, T2)`)
+//! * Struct(`struct Foo{f1: F1, f2: F2}`)
+//! * Enum
+//!  * `UnitVariant`
+//!  * `NewtypeVariant(N)`
+//!  * `TupleVariant(R1, R2)`
+//!  * `StructVariant{f1: F1, f2: F2}`
+//!
+//! ## Atom types
+//!
+//! * `()`
+//! * `String`, `&str`
+//! * `bool`
+//! * Number types: `(u|i)(8|16|32|64)` and `f(32|64)`
+//!
+//! ## Newtype struct member type(`N`)
+//!
+//! * Atom types: Matches the node itself.
+//! * `Vec<R>`: Matches named children.
+//! * `Option<R>` Matches 0 or 1 named child.
+//! * `(R1, R2, ..., RN)`: Matches exact N children.
+//!
+//! ## Field member types(`F`)
+//!
+//! * Any root type `R` except tuple: If there is exact one node in the field, matches against it.
+//! * `(R1, R2, ..., RN)`: Matches exact N named children in the field.
+//! * `Vec<R>`: Matches named children in the field.
+//! * `Option<R>` Matches 0 or 1 named child in the field.
+
 mod access;
 mod deserializer;
 mod error;
