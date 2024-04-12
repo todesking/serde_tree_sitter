@@ -8,17 +8,38 @@ pub use error::DeserializeError;
 pub fn from_tree<'d, D: serde::Deserialize<'d>>(
     tree: &'d tree_sitter::Tree,
     src: &'d str,
+    check_error: bool,
 ) -> Result<D, DeserializeError> {
-    from_node(tree.root_node(), src)
+    from_node(tree.root_node(), src, check_error)
 }
 
 pub fn from_node<'de, D: serde::Deserialize<'de>>(
     node: tree_sitter::Node<'de>,
     src: &'de str,
+    check_error: bool,
 ) -> Result<D, DeserializeError> {
+    if check_error && node.has_error() {
+        return Err(DeserializeError::TreeSitterError(collect_errors(node)));
+    }
     let deserializer =
         crate::deserializer::NodeDeserializer::new(tsnode::TsNodeImpl::new(node, src));
     D::deserialize(deserializer)
+}
+
+fn collect_errors(node: tree_sitter::Node) -> Vec<tree_sitter::Range> {
+    fn rec(node: tree_sitter::Node, buf: &mut Vec<tree_sitter::Range>) {
+        if node.is_error() {
+            buf.push(node.range());
+        }
+        if node.has_error() {
+            for c in node.children(&mut node.walk()) {
+                rec(c, buf);
+            }
+        }
+    }
+    let mut buf = Vec::new();
+    rec(node, &mut buf);
+    buf
 }
 
 #[cfg(test)]
@@ -751,7 +772,7 @@ mod test {
 
         let tree = parser.parse(src, None).unwrap();
         // show_node(&TsNodeImpl { node: tree.root_node(), src, });
-        let ast: Document = from_tree(&tree, src).unwrap();
+        let ast: Document = from_tree(&tree, src, true).unwrap();
 
         assert_eq!(
             ast,

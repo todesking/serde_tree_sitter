@@ -20,6 +20,8 @@ pub enum DeserializeError {
     ParseFloatError(std::num::ParseFloatError),
     #[error(transparent)]
     ParseBoolError(std::str::ParseBoolError),
+    #[error("Tree-sitter node contain error(s)")]
+    TreeSitterError(Vec<tree_sitter::Range>),
     #[error("{0}")]
     Custom(String),
 }

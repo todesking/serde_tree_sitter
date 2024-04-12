@@ -91,5 +91,5 @@ fn main() {
 
     let tree = parser.parse(&buf, None).unwrap();
 
-    let _ = dbg!(serde_tree_sitter::from_tree::<Document>(&tree, &buf));
+    let _ = dbg!(serde_tree_sitter::from_tree::<Document>(&tree, &buf, true));
 }

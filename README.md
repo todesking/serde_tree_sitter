@@ -23,7 +23,7 @@ enum Expr {
 
 let tree: tree_sitter::Tree = parse("...")?;
 
-serde_tree_sitter::from_tree::<Expr>(tree, src)
+serde_tree_sitter::from_tree::<Expr>(tree, src, true)
 ```
 
 ### Map named children to tuple struct
@@ -52,7 +52,7 @@ rules: {
 ```
 
 ```rust
-serde_tree_sitter::from_tree::<Vec<u32>>(tree)
+serde_tree_sitter::from_tree::<Vec<u32>>(tree, src, true)
 ```
 
 ## Map field to struct
