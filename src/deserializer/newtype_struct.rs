@@ -27,6 +27,9 @@ impl<'de, N: TsNode<'de>> NewtypeStructDeserializer<'de, N> {
         }
         Ok(NodeDeserializer::new(children.next().unwrap()))
     }
+    fn into_node_deserializer(self) -> NodeDeserializer<'de, N> {
+        NodeDeserializer::new(self.node)
+    }
     fn err_not_supported<T>(&self, name: &str) -> Result<T, DeserializeError> {
         Err(DeserializeError::DataTypeNotSupported(format!(
             "Method {} is not supported for newtype_struct({}) member type",
@@ -50,7 +53,7 @@ macro_rules! delegate_to_node_serializer {
     ($name:ident, $($rest:ident ,)*$(,)?) => {
         fn $name<V>(self, visitor: V) -> Result<V::Value, Self::Error>
         where V: serde::de::Visitor<'de> {
-            NodeDeserializer::new(self.node).$name(visitor)
+            self.into_node_deserializer().$name(visitor)
         }
         delegate_to_node_serializer!($($rest,)*);
     };
@@ -98,24 +101,26 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NewtypeStructDeserializer
 
     fn deserialize_unit_struct<V>(
         self,
-        _name: &'static str,
-        _visitor: V,
+        name: &'static str,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.err_not_supported("deserialize_unit_struct")
+        self.try_into_single_child_deserializer()?
+            .deserialize_unit_struct(name, visitor)
     }
 
     fn deserialize_newtype_struct<V>(
         self,
         name: &'static str,
-        _visitor: V,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.err_not_supported(&format!("deserialize_newtype_struct(name={name})"))
+        self.try_into_single_child_deserializer()?
+            .deserialize_newtype_struct(name, visitor)
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -138,37 +143,40 @@ impl<'de, N: TsNode<'de>> serde::Deserializer<'de> for NewtypeStructDeserializer
 
     fn deserialize_tuple_struct<V>(
         self,
-        _name: &'static str,
-        _len: usize,
-        _visitor: V,
+        name: &'static str,
+        len: usize,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.err_not_supported("deserialize_newtype_struct")
+        self.try_into_single_child_deserializer()?
+            .deserialize_tuple_struct(name, len, visitor)
     }
 
     fn deserialize_struct<V>(
         self,
-        _name: &'static str,
-        _fields: &'static [&'static str],
-        _visitor: V,
+        name: &'static str,
+        fields: &'static [&'static str],
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.err_not_supported("deserialize_struct")
+        self.try_into_single_child_deserializer()?
+            .deserialize_struct(name, fields, visitor)
     }
 
     fn deserialize_enum<V>(
         self,
-        _name: &'static str,
-        _variants: &'static [&'static str],
-        _visitor: V,
+        name: &'static str,
+        variants: &'static [&'static str],
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        self.err_not_supported("deserialize_enum")
+        self.try_into_single_child_deserializer()?
+            .deserialize_enum(name, variants, visitor)
     }
 }

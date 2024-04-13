@@ -23,7 +23,7 @@
 //! ## Atom types
 //!
 //! * `()`
-//! * `String`, `&str`
+//! * `String`, `&str`, `&[u8]`
 //! * `bool`
 //! * Number types: `(u|i)(8|16|32|64)` and `f(32|64)`
 //!
@@ -32,14 +32,15 @@
 //! * Atom types: Matches the node itself.
 //! * `Vec<R>`: Matches named children.
 //! * `Option<R>` Matches 0 or 1 named child.
-//! * `(R1, R2, ..., RN)`: Matches exact N children.
+//! * `(R1, R2, ..., RN)`: Matches exact N named children.
+//! * Structs/Enums: Matches exact one named child.
 //!
 //! ## Field member types(`F`)
 //!
-//! * Any root type `R` except tuple: If there is exact one node in the field, matches against it.
 //! * `(R1, R2, ..., RN)`: Matches exact N named children in the field.
 //! * `Vec<R>`: Matches named children in the field.
 //! * `Option<R>` Matches 0 or 1 named child in the field.
+//! * Any other root types: If there is exact one node in the field, matches against it.
 
 mod access;
 mod deserializer;
@@ -315,22 +316,16 @@ mod test {
     }
 
     #[test]
-    fn test_newtype_struct_not_supported_type() {
+    fn test_newtype_struct() {
         #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
         #[serde(rename = "root")]
-        struct Root(Child);
+        struct Root(Vec<i32>);
 
-        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
-        #[serde(rename = "child")]
-        struct Child;
-
+        assert_ok!(Root, (root), Root(vec![]));
         assert_err!(
             Root,
-            (root "xxx" (child "123")),
-            DeserializeError::DataTypeNotSupported(
-                "Method deserialize_unit_struct is not supported for newtype_struct(root) member type"
-                .to_string()
-            )
+            (not_root),
+            DeserializeError::node_type("root", "not_root")
         );
     }
 
@@ -424,6 +419,31 @@ mod test {
             (root "abc" (child "xxx")),
             Root("abc".into())
         );
+    }
+
+    #[test]
+    fn test_newtype_struct_num() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root(i32);
+
+        assert_ok!(Root, (root "123"), Root(123));
+        assert_ok!(Root, (root "123" (child "456")), Root(123));
+    }
+
+    #[test]
+    fn test_newtype_struct_struct() {
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "root")]
+        struct Root(Child);
+
+        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
+        #[serde(rename = "child")]
+        struct Child {
+            a: i32,
+        }
+
+        assert_ok!(Root, (root (child a: (num "123"))), Root(Child{a: 123}));
     }
 
     #[test]
@@ -576,6 +596,13 @@ mod test {
     fn test_vec() {
         assert_ok!(Vec<i32>, (root), vec![]);
         assert_ok!(Vec<i32>, (root (child "123") (child "456")), vec![123, 456]);
+    }
+
+    #[test]
+    fn test_option() {
+        assert_ok!(Option<i32>, (root), None);
+        assert_ok!(Option<i32>, (root (child "123")), Some(123));
+        assert_err!(Option<i32>, (root (child "123") (child "456")), DeserializeError::child_length(1, 2));
     }
 
     #[test]
