@@ -252,6 +252,7 @@ mod test {
 
     define_test_simple_ok!(test_string_ok, String, "abc", "abc".to_owned());
     define_test_simple_ok!(test_str_ok, &str, "abc", "abc");
+    define_test_simple_ok!(test_array_u8_ok, &[u8], "abc", "abc".as_bytes());
 
     #[test]
     fn test_unit_struct() {
@@ -271,7 +272,7 @@ mod test {
     }
 
     #[test]
-    fn test_0_tuple_struct() {
+    fn test_tuple_struct_0() {
         #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
         #[serde(rename = "root")]
         struct Root();
@@ -291,7 +292,7 @@ mod test {
     }
 
     #[test]
-    fn test_n_tuple_struct() {
+    fn test_tuple_struct_n() {
         #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
         #[serde(rename = "root")]
         struct Root(u32, u32);
@@ -572,88 +573,9 @@ mod test {
     }
 
     #[test]
-    fn vec() {
-        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
-        #[serde(rename = "child")]
-        struct Child;
-
-        assert_eq!(
-            deserialize::<Vec<Child>>(&make_node!(root)).unwrap(),
-            Vec::new()
-        );
-        assert_eq!(
-            deserialize::<Vec<Child>>(&make_node!(root(child))).unwrap(),
-            vec![Child]
-        );
-        assert_eq!(
-            deserialize::<Vec<Child>>(&make_node!(root(child)(child))).unwrap(),
-            vec![Child, Child]
-        );
-    }
-
-    #[test]
-    fn newtype_struct_vec() {
-        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
-        #[serde(rename = "root")]
-        struct Root(Vec<Child>);
-
-        #[derive(serde::Deserialize, PartialEq, Eq, Debug)]
-        #[serde(rename = "child")]
-        struct Child;
-
-        assert_eq!(
-            deserialize::<Root>(&make_node!(root)).unwrap(),
-            Root(vec![])
-        );
-        assert_eq!(
-            deserialize::<Root>(&make_node!(root(child)(child))).unwrap(),
-            Root(vec![Child, Child])
-        );
-        assert_eq!(
-            deserialize::<Root>(&make_node!(foo)).unwrap_err(),
-            DeserializeError::node_type("root", "foo")
-        );
-    }
-
-    #[test]
-    fn value_num() {
-        assert_eq!(deserialize::<u32>(&make_node!(aaa "123")).unwrap(), 123);
-        assert_eq!(
-            deserialize::<u32>(&make_node!(aaa "foo")).unwrap_err(),
-            "foo"
-                .parse::<u32>()
-                .map_err(DeserializeError::ParseIntError)
-                .unwrap_err()
-        );
-        assert_eq!(deserialize::<f32>(&make_node!(aaa "123")).unwrap(), 123f32);
-        assert_eq!(
-            deserialize::<f32>(&make_node!(aaa "foo")).unwrap_err(),
-            "foo"
-                .parse::<f32>()
-                .map_err(DeserializeError::ParseFloatError)
-                .unwrap_err()
-        );
-    }
-
-    #[test]
-    fn value_borrowed_str() {
-        assert_eq!(deserialize::<&str>(&make_node!(aaa "foo")).unwrap(), "foo",);
-    }
-
-    #[test]
-    fn value_string() {
-        assert_eq!(
-            deserialize::<String>(&make_node!(aaa "foo")).unwrap(),
-            "foo",
-        );
-    }
-
-    #[test]
-    fn value_borrowed_bytes() {
-        assert_eq!(
-            deserialize::<&[u8]>(&make_node!(aaa "foo")).unwrap(),
-            "foo".as_bytes(),
-        );
+    fn test_vec() {
+        assert_ok!(Vec<i32>, (root), vec![]);
+        assert_ok!(Vec<i32>, (root (child "123") (child "456")), vec![123, 456]);
     }
 
     #[test]
